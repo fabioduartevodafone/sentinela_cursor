@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-// For development - these will be replaced when Supabase is properly connected
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'
+// Configuração do Supabase - variáveis de ambiente
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'
+
+// Validação das variáveis de ambiente em desenvolvimento
+if ((import.meta as any).env.DEV) {
+  console.log('🔧 Supabase Config:', {
+    url: supabaseUrl,
+    hasKey: !!supabaseAnonKey && supabaseAnonKey !== 'placeholder-key',
+    keyLength: supabaseAnonKey?.length || 0
+  })
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -65,12 +74,12 @@ export const loginMockUser = async (email: string, password: string) => {
     return { user: masterUser, error: null }
   }
   
-  // Check for new master user
-  if (email === 'master@master.com' && password === '1234') {
+  // Check for new master user with correct credentials
+  if (email === 'master@master.com' && password === '09092019Rose!') {
     const masterUser = {
       id: 'master-user-id-2',
       email: 'master@master.com',
-      role: 'admin' as UserRole,
+      role: 'master' as UserRole,
       full_name: 'Master Admin',
       phone: '',
       is_approved: true,
@@ -115,7 +124,7 @@ export const loginMockUser = async (email: string, password: string) => {
   return { user: null, error: { message: 'Email ou senha incorretos' } }
 }
 
-export type UserRole = 'citizen' | 'agent' | 'admin'
+export type UserRole = 'citizen' | 'agent' | 'admin' | 'master'
 
 export interface UserProfile {
   id: string

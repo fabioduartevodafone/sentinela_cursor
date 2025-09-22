@@ -62,7 +62,9 @@ export default function RegisterForm() {
           title: "Conta criada com sucesso!",
           description: formData.role === 'citizen' 
             ? "Você já pode fazer login e usar o sistema."
-            : "Sua conta será analisada por um administrador antes da aprovação.",
+            : formData.role === 'agent'
+              ? "Sua conta será analisada por um administrador ou conta master antes da aprovação."
+              : "Sua conta será analisada pela conta master antes da aprovação.",
         })
 
         navigate(formData.role === 'citizen' ? '/login-citizen' : '/login-admin')
@@ -178,9 +180,17 @@ export default function RegisterForm() {
                 </SelectContent>
               </Select>
               {formData.role !== 'citizen' && (
-                <p className="text-xs text-muted-foreground">
-                  Contas de agente e administrador precisam ser aprovadas.
-                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <p className="text-sm text-blue-800 font-medium mb-1">
+                    ⚠️ Aprovação Necessária
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    {formData.role === 'agent' 
+                      ? "Contas de agente precisam ser aprovadas por um administrador ou conta master antes de ter acesso completo ao sistema."
+                      : "Contas de administrador precisam ser aprovadas pela conta master antes de ter acesso completo ao sistema."
+                    }
+                  </p>
+                </div>
               )}
             </div>
 

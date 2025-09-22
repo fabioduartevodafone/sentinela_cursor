@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { Shield, User } from "lucide-react"
 import { AuthService } from "@/lib/auth"
+import { getRedirectPath } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 
 interface LoginFormProps {
@@ -48,14 +49,9 @@ export default function LoginForm({ userType }: LoginFormProps) {
           description: `Bem-vindo(a), ${user.full_name}`,
         })
 
-        // Navigate based on user role
-        if (user.role === 'citizen') {
-          navigate('/citizen-dashboard')
-        } else if (user.role === 'agent') {
-          navigate('/agent-dashboard')
-        } else {
-          navigate('/admin-dashboard')
-        }
+        // Navigate based on user role using utility function
+        const redirectPath = getRedirectPath(user.role);
+        navigate(redirectPath);
         return
       }
 
@@ -99,14 +95,9 @@ export default function LoginForm({ userType }: LoginFormProps) {
         description: `Bem-vindo(a), ${profile.full_name}`,
       })
 
-      // Navigate based on user role
-      if (profile.role === 'citizen') {
-        navigate('/citizen-dashboard')
-      } else if (profile.role === 'agent') {
-        navigate('/agent-dashboard')
-      } else {
-        navigate('/admin-dashboard')
-      }
+      // Navigate based on user role using utility function
+      const redirectPath = getRedirectPath(profile.role);
+      navigate(redirectPath);
 
     } catch (error: any) {
       setError(error.message)
@@ -170,8 +161,86 @@ export default function LoginForm({ userType }: LoginFormProps) {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
+            
+            {userType === 'citizen' && (
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Ou continue com
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            {userType === 'citizen' && (
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const user = await AuthService.loginWithGoogle();
+                      toast({
+                        title: "Login com Google realizado com sucesso!",
+                        description: `Bem-vindo(a), ${user.full_name}`,
+                      });
+                      navigate('/citizen-dashboard');
+                    } catch (error: any) {
+                      setError(error.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12 h8"></path>
+                    <path d="M12 8 v8"></path>
+                  </svg>
+                  Google
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const user = await AuthService.loginWithFacebook();
+                      toast({
+                        title: "Login com Facebook realizado com sucesso!",
+                        description: `Bem-vindo(a), ${user.full_name}`,
+                      });
+                      navigate('/citizen-dashboard');
+                    } catch (error: any) {
+                      setError(error.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                  </svg>
+                  Facebook
+                </Button>
+              </div>
+            )}
 
             <div className="text-center space-y-2">
+              <Button 
+                variant="link" 
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Esqueci minha senha
+              </Button>
               <Button 
                 variant="link" 
                 type="button"

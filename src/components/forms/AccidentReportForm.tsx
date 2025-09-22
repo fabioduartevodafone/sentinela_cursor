@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { StorageService } from "@/lib/storage"
 import { Car, Home, Building, Upload, X } from "lucide-react"
 
 interface AccidentReport {
@@ -41,6 +42,7 @@ export default function AccidentReportForm() {
     reporter_phone: '',
     reporter_email: '',
   })
+  const [uploadingFiles, setUploadingFiles] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,14 +83,51 @@ export default function AccidentReportForm() {
     })
   }
 
-  const handleFileUpload = (files: FileList | null, type: 'photos' | 'videos') => {
-    if (!files) return
+  const handleFileUpload = async (files: FileList | null, type: 'photos' | 'videos') => {
+    if (!files || files.length === 0) return
     
-    const newFiles = Array.from(files)
-    setReport(prev => ({
-      ...prev,
-      [type]: [...prev[type], ...newFiles]
-    }))
+    setUploadingFiles(true)
+    const uploadedFiles: File[] = []
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const result = type === 'photos' 
+          ? await StorageService.uploadImage(file)
+          : await StorageService.uploadVideo(file)
+        
+        if (result.url) {
+          uploadedFiles.push(file)
+        } else if (result.error) {
+          toast({
+            title: "Erro no upload",
+            description: `Falha ao enviar ${file.name}: ${result.error}`,
+            variant: "destructive"
+          })
+        }
+      }
+      
+      if (uploadedFiles.length > 0) {
+        setReport(prev => ({
+          ...prev,
+          [type]: [...prev[type], ...uploadedFiles]
+        }))
+        
+        toast({
+          title: "Upload concluído",
+          description: `${uploadedFiles.length} ${type === 'photos' ? 'foto(s)' : 'vídeo(s)'} enviado(s) com sucesso!`,
+        })
+      }
+    } catch (error) {
+      console.error('Erro no upload:', error)
+      toast({
+        title: "Erro no upload",
+        description: `Não foi possível fazer upload ${type === 'photos' ? 'das fotos' : 'dos vídeos'}.`,
+        variant: "destructive"
+      })
+    } finally {
+      setUploadingFiles(false)
+    }
   }
 
   const removeFile = (index: number, type: 'photos' | 'videos') => {
@@ -420,8 +459,8 @@ export default function AccidentReportForm() {
                 <span className="text-sm text-muted-foreground">Gravidade:</span>
                 {getSeverityBadge(report.severity)}
               </div>
-              <Button type="submit" size="lg">
-                Enviar Relatório
+              <Button type="submit" size="lg" disabled={uploadingFiles}>
+                {uploadingFiles ? 'Fazendo upload...' : 'Enviar Relatório'}
               </Button>
             </div>
           </form>

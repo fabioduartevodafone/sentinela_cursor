@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { StorageService } from "@/lib/storage"
 import { 
   Building, 
   TreePine, 
@@ -45,6 +46,7 @@ export default function RiskAlertForm() {
     reporter_phone: '',
     reporter_email: '',
   })
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,14 +87,48 @@ export default function RiskAlertForm() {
     })
   }
 
-  const handleFileUpload = (files: FileList | null) => {
-    if (!files) return
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
     
-    const newFiles = Array.from(files)
-    setAlert(prev => ({
-      ...prev,
-      photos: [...prev.photos, ...newFiles]
-    }))
+    setUploadingPhotos(true)
+    const uploadedPhotos: File[] = []
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const result = await StorageService.uploadImage(file)
+        
+        if (result.url) {
+          uploadedPhotos.push(file)
+        } else if (result.error) {
+          toast({
+            title: "Erro no upload",
+            description: `Falha ao enviar ${file.name}: ${result.error}`,
+            variant: "destructive"
+          })
+        }
+      }
+      
+      if (uploadedPhotos.length > 0) {
+        setAlert(prev => ({
+          ...prev,
+          photos: [...prev.photos, ...uploadedPhotos]
+        }))
+        toast({
+          title: "Upload concluído",
+          description: `${uploadedPhotos.length} foto(s) enviada(s) com sucesso!`,
+        })
+      }
+    } catch (error) {
+      console.error('Erro no upload:', error)
+      toast({
+        title: "Erro no upload",
+        description: "Não foi possível fazer upload das fotos.",
+        variant: "destructive"
+      })
+    } finally {
+      setUploadingPhotos(false)
+    }
   }
 
   const removeFile = (index: number) => {
@@ -350,8 +386,9 @@ export default function RiskAlertForm() {
                 type="submit" 
                 size="lg"
                 variant={alert.immediate_danger ? "destructive" : "default"}
+                disabled={uploadingPhotos}
               >
-                {alert.immediate_danger ? "🚨 Enviar Alerta de Emergência" : "Enviar Alerta"}
+                {uploadingPhotos ? "Fazendo upload..." : alert.immediate_danger ? "🚨 Enviar Alerta de Emergência" : "Enviar Alerta"}
               </Button>
             </div>
           </form>

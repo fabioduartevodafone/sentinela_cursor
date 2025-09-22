@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
+import { StorageService } from "@/lib/storage"
+import { supabase } from "@/lib/supabase"
 import { Shield, Upload, FileText } from "lucide-react"
 
 export default function ProtectiveMeasureForm() {
@@ -57,24 +58,28 @@ export default function ProtectiveMeasureForm() {
 
   const uploadDocument = async (file: File): Promise<string | null> => {
     setUploadingFile(true)
+    
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`
-      const filePath = `protective-measures/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        throw uploadError
+      const result = await StorageService.uploadDocument(file, user?.id)
+      
+      if (result.error) {
+        toast({
+          title: "Erro no upload",
+          description: result.error,
+          variant: "destructive"
+        })
+        return null
       }
 
-      const { data } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath)
+      if (result.url) {
+        toast({
+          title: "Upload concluído",
+          description: "Documento enviado com sucesso!",
+        })
+        return result.url
+      }
 
-      return data.publicUrl
+      return null
     } catch (error) {
       console.error('Erro no upload:', error)
       toast({

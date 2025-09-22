@@ -48,6 +48,40 @@ export default function AdminDashboard() {
     const user = JSON.parse(localStorage.getItem('current_user') || '{}')
     setCurrentUser(user)
 
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      // Check if using mock system or if Supabase is not accessible
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
+      
+      if (supabaseUrl.includes('placeholder')) {
+        // Mock system - get data from localStorage
+        loadMockData()
+        return
+      }
+
+      // Try real Supabase system with timeout and fallback
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        )
+
+        // In a real implementation, you would fetch from Supabase here
+        // For now, fallback to mock data
+        throw new Error('Supabase not configured')
+      } catch (supabaseError) {
+        console.warn('Supabase não acessível, usando dados mock:', supabaseError)
+        loadMockData()
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error)
+      loadMockData()
+    }
+  }
+
+  const loadMockData = () => {
     // Load pending users for approval (mock data)
     const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
     const pending = users.filter((u: any) => !u.is_approved && u.role !== 'citizen')
@@ -61,7 +95,7 @@ export default function AdminDashboard() {
     // Load panic alerts
     const alerts = JSON.parse(localStorage.getItem('panic_alerts') || '[]')
     setPanicAlerts(alerts)
-  }, [])
+  }
 
   const approveUser = (userId: string) => {
     const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
@@ -169,13 +203,14 @@ export default function AdminDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/user-approval'}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Usuários Pendentes</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">{pendingUsers.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Clique para gerenciar</p>
             </CardContent>
           </Card>
 

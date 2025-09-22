@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { AuthService, AuthUser } from '@/lib/auth'
+import { getRedirectPath } from '@/lib/utils'
 
 interface AuthContextType {
   user: User | AuthUser | null
@@ -9,6 +11,8 @@ interface AuthContextType {
   loading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  forceRefresh: () => Promise<void>
+  loginAndRedirect: (credentials: { email: string; password: string }, expectedRole?: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -17,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | AuthUser | null>(null)
   const [profile, setProfile] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   const refreshProfile = async () => {
     if (AuthService.isMockMode()) {
@@ -45,6 +50,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching profile:', error)
     } else {
       setProfile(data)
+    }
+  }
+
+  // Função para forçar atualização do estado após login
+  const forceRefresh = async () => {
+    if (AuthService.isMockMode()) {
+      const currentUser = AuthService.getCurrentUser()
+      if (currentUser) {
+        setUser(currentUser)
+        setProfile(currentUser)
+      } else {
+        setUser(null)
+        setProfile(null)
+      }
+    }
+  }
+
+  // Função para login com redirecionamento automático
+  const loginAndRedirect = async (credentials: { email: string; password: string }, expectedRole?: string) => {
+    try {
+      const user = await AuthService.login(credentials)
+      
+      // Verificar se o usuário tem o role esperado (se especificado)
+      if (expectedRole && user.role !== expectedRole) {
+        throw new Error(`Esta área é exclusiva para ${expectedRole === 'citizen' ? 'cidadãos' : 'administradores'}`)
+      }
+      
+      // Atualizar estado de autenticação
+      await forceRefresh()
+      
+      // Aguardar um pouco para garantir que o estado foi atualizado
+      setTimeout(() => {
+        const redirectPath = getRedirectPath(user.role)
+        navigate(redirectPath)
+      }, 100)
+      
+    } catch (error) {
+      throw error // Re-throw para que o componente possa tratar
     }
   }
 
@@ -116,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile, forceRefresh, loginAndRedirect }}>
       {children}
     </AuthContext.Provider>
   )

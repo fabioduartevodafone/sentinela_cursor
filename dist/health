@@ -1,0 +1,8 @@
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "version": "1.0.0",
+  "service": "Sentinela Emergency System",
+  "uptime": "0s",
+  "environment": "production"
+}

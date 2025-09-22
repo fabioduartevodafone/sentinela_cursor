@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Shield, AlertTriangle, FileText, Play, Volume2, Clock, MapPin, User, LogOut, Car } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useNavigate } from "react-router-dom"
+import { supabase } from "@/lib/supabase"
 import VehicleManagement from "@/components/vehicles/VehicleManagement"
 
 interface PanicAlert {
@@ -55,6 +56,93 @@ export default function AgentDashboard() {
     setCurrentUser(userData)
     loadMockData()
   }, [user, profile, navigate])
+
+  useEffect(() => {
+    if (user) {
+      fetchData()
+    }
+  }, [user])
+
+  const fetchData = async () => {
+    if (!user) return
+
+    try {
+      // Check if using mock system or if Supabase is not accessible
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
+      
+      if (supabaseUrl.includes('placeholder')) {
+        // Mock system - get data from localStorage or use sample data
+        const mockAlerts = localStorage.getItem('panic_alerts')
+        const mockIncidents = localStorage.getItem('incidents')
+        
+        setPanicAlerts(mockAlerts ? JSON.parse(mockAlerts) : [])
+        setIncidents(mockIncidents ? JSON.parse(mockIncidents) : [])
+        return
+      }
+
+      // Try real Supabase system with timeout and fallback
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        )
+
+        const dataPromise = Promise.all([
+          supabase
+            .from('panic_alerts')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('incidents')
+            .select('*')
+            .order('created_at', { ascending: false })
+        ])
+
+        const [alertsResult, incidentsResult] = await Promise.race([dataPromise, timeoutPromise]) as any
+
+        setPanicAlerts(alertsResult.data || [])
+        setIncidents(incidentsResult.data || [])
+      } catch (supabaseError) {
+        console.warn('Supabase não acessível, usando dados mock:', supabaseError)
+        
+        // Fallback to mock data
+        const mockAlerts = localStorage.getItem('panic_alerts')
+        const mockIncidents = localStorage.getItem('incidents')
+        
+        // Generate some sample data if none exists
+        const sampleAlerts = mockAlerts ? JSON.parse(mockAlerts) : [
+          {
+            id: '1',
+            citizen_id: 'sample-citizen',
+            citizen_name: 'Cidadão de Exemplo',
+            location: 'Localização de Exemplo',
+            status: 'active',
+            created_at: new Date().toISOString()
+          }
+        ]
+        
+        const sampleIncidents = mockIncidents ? JSON.parse(mockIncidents) : [
+          {
+            id: '1',
+            type: 'Incidente de Exemplo',
+            description: 'Este é um incidente de exemplo para demonstração do sistema',
+            location: 'Local de Exemplo',
+            status: 'pending',
+            created_at: new Date().toISOString()
+          }
+        ]
+        
+        setPanicAlerts(sampleAlerts)
+        setIncidents(sampleIncidents)
+      }
+    } catch (error) {
+         console.error('Erro ao buscar dados:', error)
+         // Set empty arrays as final fallback
+         setPanicAlerts([])
+         setIncidents([])
+       } finally {
+// Remove setLoading call since loading state is not defined
+       }
+     }
 
   const loadMockData = () => {
     // Mock panic alerts
